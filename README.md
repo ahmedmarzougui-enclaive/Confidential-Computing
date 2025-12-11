@@ -42,13 +42,11 @@ sequenceDiagram
     participant Nitride as Nitride Agent
     participant Attest as Attestation Service
     participant Prov as Provisioning Service
-
     App->>Nitride: Request secret (key or certificate)
     Nitride->>Attest: Request attestation (SNP report with nonce)
     Attest-->>Nitride: Signed attestation result (VM ID, versions, code hash, timestamp)
-
     alt Attestation verified
-        Nitride->>Prov: Present approval; request secret
+        Nitride->>Prov: Present approval and request secret
         Prov->>Nitride: Deliver secret into protected memory
         Nitride-->>App: Use secret via vHSM (secret never leaves protected memory)
     else Attestation failed
