@@ -95,9 +95,3 @@ sequenceDiagram
     Nitride->>LUKS: Program dm-crypt with key via privileged interface
     LUKS-->>Boot: Volume unlocked; continue boot
 ```
-
-
-Implementation hints:
-- Use a small privileged helper (e.g., systemd-cryptsetup hook or a custom unit) that asks Nitride for the key and passes it to dm-crypt without logging or persisting it.
-- For remote KMS, define a policy mapping volume identity → key ID; Nitride requests that key after attestation.
-- For sealed keys, bind the sealed blob to SEV-SNP measurements (OVMF, kernel/initramfs hashes, policy flags) so only the approved VM state can unseal.
