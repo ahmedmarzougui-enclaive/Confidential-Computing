@@ -69,3 +69,63 @@ sequenceDiagram
 Notes:
 - In Case A, only local access controls apply (e.g., socket ACLs, mTLS, process/cgroup identity). No remote attestation needed.
 - In Case B, Nitride handles attestation and secret provisioning. The app still never sees raw keys; they remain in vHSM memory.
+
+
+# LUKS Unlock with SEV-SNP, Nitride, and vHSM (Example Schema)
+
+This schema shows how a LUKS/dm-crypt root or data volume is unlocked only after SEV-SNP attestation, using Nitride as the in-VM agent and vHSM as the secure key vault.
+
+## Flow: Boot-time LUKS unlock via remote KMS
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Boot as Init/Systemd (in VM)
+    participant Nitride as Nitride Agent (in VM)
+    participant vHSM as vHSM (in VM)
+    participant Attest as Attestation Service
+    participant KMS as Provisioning Service (holds LUKS key)
+    participant LUKS as dm-crypt/LUKS (kernel)
+
+    Boot->>Nitride: Need LUKS master key to unlock volume
+    Nitride->>Attest: Request SEV-SNP attestation (SNP report with nonce)
+    Attest-->>Nitride: Attestation OK (verified measurements/TCB)
+    Nitride->>KMS: Present approval; request LUKS key (for volume)
+    KMS-->>vHSM: Inject LUKS key into vHSM protected memory
+    vHSM-->>Nitride: Key available (never leaves vHSM to userland)
+
+    Nitride->>LUKS: Program dm-crypt with key via privileged interface
+    LUKS-->>Boot: Volume unlocked; continue boot
+```
+
+Key points:
+- The LUKS master key is released only after attestation succeeds.
+- The key is delivered into vHSM and never exposed to regular userland processes.
+- Nitride performs the attestation and requests the key; a privileged path programs dm-crypt (e.g., systemd-cryptsetup integration).
+
+## Alternative Flow: Sealed local key (no remote KMS)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Boot as Init/Systemd (in VM)
+    participant Nitride as Nitride Agent (in VM)
+    participant vHSM as vHSM (in VM)
+    participant LUKS as dm-crypt/LUKS (kernel)
+
+    Boot->>Nitride: Need LUKS master key to unlock volume
+    Nitride->>Nitride: Perform SEV-SNP attestation (verify policy locally)
+    alt Attestation verified
+        vHSM->>vHSM: Unseal LUKS key (bound to SNP measurements/policy)
+        vHSM-->>Nitride: Key available (inside vHSM)
+        Nitride->>LUKS: Program dm-crypt with key via privileged interface
+        LUKS-->>Boot: Volume unlocked; continue boot
+    else Attestation failed
+        Nitride-->>Boot: Deny unlock (key remains sealed)
+    end
+```
+
+Implementation hints:
+- Use a small privileged helper (e.g., systemd-cryptsetup hook or a custom unit) that asks Nitride for the key and passes it to dm-crypt without logging or persisting it.
+- For remote KMS, define a policy mapping volume identity → key ID; Nitride requests that key after attestation.
+- For sealed keys, bind the sealed blob to SEV-SNP measurements (OVMF, kernel/initramfs hashes, policy flags) so only the approved VM state can unseal.
