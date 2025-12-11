@@ -80,20 +80,18 @@ This schema shows how a LUKS/dm-crypt root or data volume is unlocked only after
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Boot as Init/Systemd (in VM)
-    participant Nitride as Nitride Agent (in VM)
-    participant vHSM as vHSM (in VM)
+    participant Boot as Init/Systemd
+    participant Nitride as Nitride Agent
+    participant vHSM as vHSM
     participant Attest as Attestation Service
-    participant KMS as Provisioning Service (holds LUKS key)
-    participant LUKS as dm-crypt/LUKS (kernel)
-
+    participant KMS as Provisioning Service
+    participant LUKS as dm-crypt/LUKS
     Boot->>Nitride: Need LUKS master key to unlock volume
-    Nitride->>Attest: Request SEV-SNP attestation (SNP report with nonce)
+    Nitride->>Attest: Request SEV-SNP attestation (report with nonce)
     Attest-->>Nitride: Attestation OK (verified measurements/TCB)
     Nitride->>KMS: Present approval; request LUKS key (for volume)
     KMS-->>vHSM: Inject LUKS key into vHSM protected memory
     vHSM-->>Nitride: Key available (never leaves vHSM to userland)
-
     Nitride->>LUKS: Program dm-crypt with key via privileged interface
     LUKS-->>Boot: Volume unlocked; continue boot
 ```
@@ -108,11 +106,10 @@ Key points:
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Boot as Init/Systemd (in VM)
-    participant Nitride as Nitride Agent (in VM)
-    participant vHSM as vHSM (in VM)
-    participant LUKS as dm-crypt/LUKS (kernel)
-
+    participant Boot as Init/Systemd
+    participant Nitride as Nitride Agent
+    participant vHSM as vHSM
+    participant LUKS as dm-crypt/LUKS
     Boot->>Nitride: Need LUKS master key to unlock volume
     Nitride->>Nitride: Perform SEV-SNP attestation (verify policy locally)
     alt Attestation verified
