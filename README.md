@@ -76,6 +76,7 @@ This schema shows how a LUKS/dm-crypt root or data volume is unlocked only after
 
 ## Flow: Boot-time LUKS unlock via remote KMS
 
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -95,31 +96,6 @@ sequenceDiagram
     LUKS-->>Boot: Volume unlocked; continue boot
 ```
 
-Key points:
-- The LUKS master key is released only after attestation succeeds.
-- The key is delivered into vHSM and never exposed to regular userland processes.
-- Nitride performs the attestation and requests the key; a privileged path programs dm-crypt (e.g., systemd-cryptsetup integration).
-
-## Alternative Flow: Sealed local key (no remote KMS)
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Boot as Init/Systemd
-    participant Nitride as Nitride Agent
-    participant vHSM as vHSM
-    participant LUKS as dm-crypt/LUKS
-    Boot->>Nitride: Need LUKS master key to unlock volume
-    Nitride->>Nitride: Perform SEV-SNP attestation (verify policy locally)
-    alt Attestation verified
-        vHSM->>vHSM: Unseal LUKS key (bound to SNP measurements/policy)
-        vHSM-->>Nitride: Key available (inside vHSM)
-        Nitride->>LUKS: Program dm-crypt with key via privileged interface
-        LUKS-->>Boot: Volume unlocked; continue boot
-    else Attestation failed
-        Nitride-->>Boot: Deny unlock (key remains sealed)
-    end
-```
 
 Implementation hints:
 - Use a small privileged helper (e.g., systemd-cryptsetup hook or a custom unit) that asks Nitride for the key and passes it to dm-crypt without logging or persisting it.
