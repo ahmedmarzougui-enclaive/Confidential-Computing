@@ -33,7 +33,7 @@ Confidential Computing keeps data safe while it’s being used, not just at rest
 - SEV-SNP ensures vHSM memory is encrypted and tamper-proof.
 - Applications request keys from vHSM; hypervisor or cloud provider cannot read them.
 
-## Attestation & Key Provisioning Flow (with Nitride)
+## Attestation & Local Key Generation Flow (with Nitride)
 
 ```mermaid
 sequenceDiagram
@@ -43,18 +43,26 @@ sequenceDiagram
     participant VM as SEV-SNP VM
     participant Nitride as Nitride (VM Agent)
     participant Attest as Attestation Service (Verifier)
-    participant Prov as Provisioning/KMS
+
     Note over VM: Confidential boot OK. SEV-SNP active. Encrypted RAM. Integrity protected.
-    App->>vHSM: Request key or crypto
-    alt Key present
+
+    App->>vHSM: Request key or crypto operation
+
+    alt Key already exists
         vHSM-->>App: Perform crypto (keys never leave vHSM)
-    else Key missing
-        vHSM-->>Nitride: Require key X
-        Nitride->>Attest: Submit SEV-SNP attestation report
-        Attest-->>Nitride: Approval token
-        Nitride->>Prov: Request key X with token
-        Prov->>vHSM: Inject key X
+    else Key absent (policy requires attestation before generation/use)
+        vHSM-->>Nitride: Gate key generation/use pending attestation
+        Nitride->>Attest: Submit SEV-SNP attestation report (with nonce)
+        Attest-->>Nitride: Approval token (measurements verified)
+        Nitride-->>vHSM: Attestation approved (enable key generation/use)
+        vHSM->>vHSM: Generate key X locally (sealed to VM policy/TCB)
         vHSM-->>App: Perform crypto using key X
     end
-    Note over VM,vHSM: Hypervisor cannot read VM memory (RMP, VMPL)
+
+    Note over VM,vHSM: Hypervisor cannot read VM memory (RMP, VMPL). Keys remain inside vHSM.
 ```
+
+### Where Nitride fits (local-key scenario)
+- Runs inside the VM as the attestation/provisioning gatekeeper.
+- Verifies the VM via SEV-SNP attestation before vHSM is allowed to generate or use certain keys.
+- No external key provisioning needed; vHSM generates and stores keys locally after Nitride signals attestation approval.
