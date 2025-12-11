@@ -37,26 +37,24 @@ Confidential Computing keeps data safe while it’s being used, not just at rest
 
 ```mermaid
 sequenceDiagram
+    autonumber
     participant App as Application
     participant vHSM as vHSM (in SEV-SNP VM)
-    participant VM as SEV-SNP VM (Encrypted RAM)
+    participant VM as SEV-SNP VM
     participant Nitride as Nitride (VM Agent)
     participant Attest as Attestation Service (Verifier)
-    participant Prov as Provisioning Service or KMS
-
-    Note over VM: Confidential Boot; SEV-SNP active (encrypted RAM and integrity)
-    App->>vHSM: Request key or crypto operation
-
-    alt Key present and allowed
+    participant Prov as Provisioning/KMS
+    Note over VM: Confidential boot OK. SEV-SNP active. Encrypted RAM. Integrity protected.
+    App->>vHSM: Request key or crypto
+    alt Key present
         vHSM-->>App: Perform crypto (keys never leave vHSM)
-    else Key missing or gated by policy
-        vHSM-->>Nitride: Key X required (trigger attestation)
-        Nitride->>Attest: Send SEV-SNP attestation report (with nonce)
-        Attest-->>Nitride: Approval token (measurements OK)
-        Nitride->>Prov: Present token; request key X
-        Prov->>vHSM: Inject key X directly into vHSM (inside VM)
+    else Key missing
+        vHSM-->>Nitride: Require key X
+        Nitride->>Attest: Submit SEV-SNP attestation report
+        Attest-->>Nitride: Approval token
+        Nitride->>Prov: Request key X with token
+        Prov->>vHSM: Inject key X
         vHSM-->>App: Perform crypto using key X
     end
-
-    Note over VM,vHSM: Hypervisor cannot read VM memory (RMP and VMPL protections)
+    Note over VM,vHSM: Hypervisor cannot read VM memory (RMP, VMPL)
 ```
