@@ -27,14 +27,23 @@ Confidential Computing keeps data safe while it’s being used, not just at rest
 - CPU registers are also encrypted whenever the VM is paused or switched, so the host cannot see them.
 
 ## 2. CPU Enforces Access Rules via RMP (Reverse Map Table) and Page Validation
-- The CPU uses a hardware table called the Reverse Map Table (RMP) to decide which VM or process can access each memory page.
-- Every memory access must pass an RMP check.
-- If the page does not belong to your VM or is not allowed for your privilege level, the CPU blocks the access instantly.
+- What is the RMP?
+  - A hardware-maintained table inside the CPU that records, for every physical page, who “owns” it (which VM), what permissions apply, and which VM privilege level (VMPL) is allowed to access it.
+- How checks happen:
+  - On every memory access, the CPU consults the RMP to ensure the requester (VM + VMPL) matches the page’s recorded owner and permissions.
+  - If the mapping is inconsistent (e.g., hypervisor remaps a page it doesn’t own, or a VM at the wrong VMPL tries to access it), the CPU blocks the access.
+- Page validation:
+  - SEV-SNP adds page state and integrity metadata so pages can’t be injected, replayed, or reused incorrectly.
+  - Transitions (e.g., assigning a page to a VM, changing permissions) require explicit validation operations; the CPU updates the RMP and enforces correctness.
 
 ## 3. Hypervisor or Host Cannot Access VM Memory (Even at VMPL0)
-- SEV-SNP introduces VMPL (Virtual Machine Privilege Levels).
-- Even the hypervisor, which normally runs at the highest privilege, is not allowed to read or modify SNP-protected memory.
-- The CPU enforces this restriction in hardware, so the cloud provider cannot bypass it.
+- VMPL overview:
+  - VMPL are hardware-enforced privilege levels inside a VM context, separate from classic x86 rings (CPL). They let a VM run multiple components at different trust levels while keeping the hypervisor outside of that trust boundary.
+- Difference between VMPL0 and VMPL1:
+  - VMPL0: The highest privilege level within the VM. Typically reserved for the most trusted code (e.g., secure monitor, minimal trusted runtime). It can perform sensitive operations like configuring protections for lower VMPLs and managing certain SNP instructions for page state transitions.
+  - VMPL1: A lower privilege level within the VM, often where the main OS kernel or critical services run. VMPL1 has broad capabilities to operate the OS but is restricted from actions reserved to VMPL0 (e.g., changing RMP ownership without authorization).
+- Why the hypervisor is blocked:
+  - The hypervisor does not run at any VMPL for the guest VM; it’s outside the VM’s protected context. RMP entries mark pages as owned by the VM, so any host/hypervisor access fails the RMP ownership/permission checks. Hardware returns faults or only ciphertext, preventing plaintext reads.
 
 ## 4. Remote Attestation Proves the VM Runs Securely Inside SEV-SNP
 - The VM can generate a signed attestation report from the AMD Security Processor.
