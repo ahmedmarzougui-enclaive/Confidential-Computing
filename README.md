@@ -51,12 +51,35 @@ Confidential Computing keeps data safe while it’s being used, not just at rest
 - External services (like Nitride, KMS, or a provisioning service) verify the report before sending secrets.
 - This ensures only a genuine, untampered Confidential VM receives sensitive data.
 
-## vHSM’s Role
+# vHSM and Nitride (Roles in a Confidential VM)
 
-- Acts as a secure key vault inside the VM.
-- Keys are generated and stay inside the vHSM; they never leave protected memory.
-- SEV-SNP ensures vHSM memory is encrypted and tamper-proof.
-- Applications request keys from vHSM; hypervisor or cloud provider cannot read them.
+## vHSM
+- Acts as the secure vault inside the VM.
+- Stores keys and secrets securely; they never leave vHSM memory.
+- Applications can perform crypto using the keys, but never see them in plaintext.
+
+## Nitride
+Nitride is the trusted agent inside the VM that handles secret provisioning and attestation.
+
+### Main roles
+
+#### 1) Detect Missing or Policy-Gated Keys
+- The application requests a key from vHSM.
+- If the key is missing, or policy requires attestation, Nitride steps in.
+
+#### 2) Prove VM Identity to the Verifier
+- Nitride collects an attestation report from SEV-SNP (CPU + security processor).
+- The report includes measurements of the VM’s boot and software state.
+- Nitride sends the report to an Attestation Service (Verifier).
+- The Verifier checks that the VM is running securely and matches expected measurements.
+
+#### 3) Fetch Secrets
+- Once attestation passes, Nitride requests the required key or secret from a Provisioning Service / KMS.
+- Secrets are injected directly into vHSM memory, never exposed elsewhere.
+
+#### 4) Enable Applications
+- The application uses the key via vHSM for crypto operations.
+- Nitride ensures that only verified, trusted VMs get access to secrets.
 
 ## When do you need attestation?
 
