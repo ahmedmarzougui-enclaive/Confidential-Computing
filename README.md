@@ -70,7 +70,6 @@ Notes:
 - In Case A, only local access controls apply (e.g., socket ACLs, mTLS, process/cgroup identity). No remote attestation needed.
 - In Case B, Nitride handles attestation and secret provisioning. The app still never sees raw keys; they remain in vHSM memory.
 
-
 # LUKS Unlock with SEV-SNP, Nitride, and vHSM (Example Schema)
 
 This schema shows how a LUKS/dm-crypt root or data volume is unlocked only after SEV-SNP attestation, using Nitride as the in-VM agent and vHSM as the secure key vault.
@@ -89,7 +88,7 @@ sequenceDiagram
     Boot->>Nitride: Need LUKS master key to unlock volume
     Nitride->>Attest: Request SEV-SNP attestation (report with nonce)
     Attest-->>Nitride: Attestation OK (verified measurements/TCB)
-    Nitride->>KMS: Present approval; request LUKS key (for volume)
+    Nitride->>KMS: Present approval and request LUKS key
     KMS-->>vHSM: Inject LUKS key into vHSM protected memory
     vHSM-->>Nitride: Key available (never leaves vHSM to userland)
     Nitride->>LUKS: Program dm-crypt with key via privileged interface
