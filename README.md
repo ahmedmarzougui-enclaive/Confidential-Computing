@@ -19,12 +19,28 @@ Confidential Computing keeps data safe while it’s being used, not just at rest
 - Secure nested paging: Hypervisor cannot map or access VM memory.
 - Attestation: Remote verification that VM runs inside a protected enclave.
 
-### How it works
+# How AMD SEV-SNP Works
 
-- VM memory and CPU registers are encrypted automatically.
-- CPU enforces access rules via RMP and page validation.
-- Hypervisor or host cannot access VM memory (even VMPL0).
-- Remote attestation proves VM runs securely inside SEV-SNP.
+## 1. VM Memory and CPU Registers Are Encrypted Automatically
+- SEV-SNP encrypts all VM RAM using a hardware key stored inside the AMD CPU.
+- Even if the hypervisor tries to read the VM’s RAM, it only sees encrypted data.
+- CPU registers are also encrypted whenever the VM is paused or switched, so the host cannot see them.
+
+## 2. CPU Enforces Access Rules via RMP (Reverse Map Table) and Page Validation
+- The CPU uses a hardware table called the Reverse Map Table (RMP) to decide which VM or process can access each memory page.
+- Every memory access must pass an RMP check.
+- If the page does not belong to your VM or is not allowed for your privilege level, the CPU blocks the access instantly.
+
+## 3. Hypervisor or Host Cannot Access VM Memory (Even at VMPL0)
+- SEV-SNP introduces VMPL (Virtual Machine Privilege Levels).
+- Even the hypervisor, which normally runs at the highest privilege, is not allowed to read or modify SNP-protected memory.
+- The CPU enforces this restriction in hardware, so the cloud provider cannot bypass it.
+
+## 4. Remote Attestation Proves the VM Runs Securely Inside SEV-SNP
+- The VM can generate a signed attestation report from the AMD Security Processor.
+- This report contains measurements of the VM’s initial state (bootloader, kernel, configs).
+- External services (like Nitride, KMS, or a provisioning service) verify the report before sending secrets.
+- This ensures only a genuine, untampered Confidential VM receives sensitive data.
 
 ## vHSM’s Role
 
