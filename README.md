@@ -38,22 +38,25 @@ It fixes this by running the sensitive code and data inside a private, protected
 ---
 
 
-## Schema: Attestation and Key Provisioning Flow
+
+
+```markdown
+## Clear Flow: Attestation and Key Provisioning (SEV‑SNP VM + vHSM)
 
 ```mermaid
 sequenceDiagram
-    participant App as Application
-    participant vHSM as vHSM (in SEV‑SNP VM)
-    participant VM as SEV‑SNP VM (Encrypted RAM)
-    participant Attest as Attestation Service (Proof)
-    participant Prov as Provisioning Service (Hidden Keys)
+    participant Step0 as 0) Precondition
+    participant App as 1) Application (inside SEV‑SNP VM)
+    participant vHSM as 2) vHSM (inside SEV‑SNP VM)
+    participant VM as SEV‑SNP VM (Encrypted + Integrity‑Protected)
+    participant Attest as 3) Attestation Service (Verifier)
+    participant Prov as 4) Provisioning Service (Secrets/Keys)
 
-    Note over VM: Confidential Boot (only verified components)
-    App->>vHSM: Request key
-    Note over VM: CPU enforces RMP & page validation
-    Note over VM: Hypervisor cannot read VM memory (VMPL0)
-    VM->>Attest: Send attestation report (authentic & trusted code)
-    Attest-->>Prov: Verified VM approved
-    Prov->>vHSM: Secret provisioning (keys delivered into enclave)
-    vHSM-->>App: Use key (keys never leave protected memory)
-```
+    Note over Step0: Confidential Boot complete; SEV‑SNP active (encrypted RAM, RMP/page validation). Hypervisor cannot read VM memory (VMPL0).
+
+    App->>vHSM: [Step 1] Request key (or crypto operation)
+    VM->>Attest: [Step 2] Produce & send SEV‑SNP attestation report (CPU‑signed)
+    Attest-->>VM: [Step 3] Verify report (measurements & signature OK) -> return approval token
+    VM-->>Prov: [Step 4] Present approval token (proof of trust)
+    Prov->>vHSM: [Step 5] Provision secrets/keys directly into vHSM (never leave VM)
+    vHSM-->>App: [Step 6] Perform crypto (encrypt/decrypt/sign/verify) without exposing raw keys
