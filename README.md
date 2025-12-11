@@ -37,33 +37,6 @@ It fixes this by running the sensitive code and data inside a private, protected
 
 ---
 
-## Schema: Architecture Overview
-
-```mermaid
-flowchart LR
-    subgraph CloudHost[Cloud Host / Hypervisor]
-        direction LR
-        HV[Hypervisor]
-    end
-
-    subgraph SEVSNPVM[SEV‑SNP VM (Encrypted RAM)]
-        direction TB
-        App[Application]
-        vHSM[Virtual HSM (Keys stay inside VM)]
-        Enclave[TEE / Enclave]
-        App --> vHSM
-        vHSM --> Enclave
-    end
-
-    Attest[Attestation Service (Proof)]
-    Prov[Provisioning Service (Hidden Keys)]
-
-    HV -.cannot access VM memory (VMPL0).-> SEVSNPVM
-
-    SEVSNPVM -- Remote Attestation --> Attest
-    Attest -- Verify & Approve --> Prov
-    Prov -- Secret Provisioning --> vHSM
-```
 
 ## Schema: Attestation and Key Provisioning Flow
 
