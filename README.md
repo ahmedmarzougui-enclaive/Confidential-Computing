@@ -38,38 +38,20 @@ Confidential Computing keeps data safe while it’s being used, not just at rest
 ```mermaid
 sequenceDiagram
     autonumber
-    participant App as Application (inside VM)
-    participant Nitride as Nitride (vHSM + Agent)
-    participant VM as SEV-SNP VM
-    participant Attest as Attestation Service (Verifier)
-    participant Prov as Provisioning Service / KMS
+    participant App as Application
+    participant Nitride as Nitride Agent
+    participant Attest as Attestation Service
+    participant Prov as Provisioning Service
 
-    Note over VM: SEV-SNP active; Confidential Boot; Encrypted RAM; Integrity protected
-
-    App->>Nitride: Request secret (key/certificate)
-
-    Note over Nitride: Do not release secret blindly; require attestation proof
-
-    Nitride->>Attest: Request attestation (SEV-SNP report with nonce)
-    Attest-->>Nitride: Signed attestation result (VM ID, CPU/SEV-SNP version, code hash, timestamp)
-
-    Note over Nitride: Verify attestation locally (policy checks: OVMF/firmware, TCB, measurements)
+    App->>Nitride: Request secret (key or certificate)
+    Nitride->>Attest: Request attestation (SNP report with nonce)
+    Attest-->>Nitride: Signed attestation result (VM ID, versions, code hash, timestamp)
 
     alt Attestation verified
         Nitride->>Prov: Present approval; request secret
-        Prov->>Nitride: Deliver secret directly into protected memory
-        Nitride-->>App: Secret usable (perform crypto); secret never leaves Nitride/vHSM
+        Prov->>Nitride: Deliver secret into protected memory
+        Nitride-->>App: Use secret via vHSM (secret never leaves protected memory)
     else Attestation failed
         Nitride-->>App: Deny request (secret unavailable)
     end
-
-    Note over VM,Nitride: Hypervisor/host cannot read VM or Nitride memory (RMP, VMPL)
 ```
-
-### Explanation aligned to the flow you provided
-- VM wants a secret: The application asks Nitride (which includes vHSM functionality) for a key/certificate.
-- Nitride verifies the VM: It requires a valid SEV-SNP attestation before releasing or generating secrets.
-- Attestation report request: Nitride requests a report and sends it to the Attestation Service.
-- Attestation Service response: Returns a signed result confirming the VM is trusted (VM ID, CPU & SEV-SNP version, hash of running code, timestamp).
-- Secret provisioning: After Nitride verifies the attestation, the Provisioning Service delivers the requested secret directly into Nitride/vHSM.
-- VM gets the secret: The application can use the secret via Nitride/vHSM; the secret never leaves protected memory.
