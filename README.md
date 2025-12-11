@@ -42,10 +42,10 @@ sequenceDiagram
     participant VM as SEV-SNP VM (Encrypted RAM)
     participant Nitride as Nitride (VM Agent)
     participant Attest as Attestation Service (Verifier)
-    participant Prov as Provisioning Service / KMS
+    participant Prov as Provisioning Service or KMS
 
-    Note over VM: Confidential Boot; SEV-SNP active (encrypted RAM, integrity)
-    App->>vHSM: Request key / crypto operation
+    Note over VM: Confidential Boot; SEV-SNP active (encrypted RAM and integrity)
+    App->>vHSM: Request key or crypto operation
 
     alt Key present and allowed
         vHSM-->>App: Perform crypto (keys never leave vHSM)
@@ -58,5 +58,5 @@ sequenceDiagram
         vHSM-->>App: Perform crypto using key X
     end
 
-    Note over VM,vHSM: Hypervisor cannot read VM memory (RMP, VMPL protections)
+    Note over VM,vHSM: Hypervisor cannot read VM memory (RMP and VMPL protections)
 ```
