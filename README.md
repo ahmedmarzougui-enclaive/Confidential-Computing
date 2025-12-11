@@ -70,3 +70,21 @@ Notes:
 - In Case A, only local access controls apply (e.g., socket ACLs, mTLS, process/cgroup identity). No remote attestation needed.
 - In Case B, Nitride handles attestation and secret provisioning. The app still never sees raw keys; they remain in vHSM memory.
 
+
+Nitride – Role 
+
+Nitride is a VM-resident agent that acts as the bridge between vHSM and external secret sources.
+
+Its main functions:
+
+Attestation: Proves to the provisioning service that the VM is running securely inside a SEV-SNP enclave.
+
+Secret Request: Once attestation succeeds, Nitride requests the needed secret/key (e.g., LUKS passphrase, API key) from the external provisioning service.
+
+Secure Injection: Delivers the secret directly into vHSM’s protected memory—keys never leave the enclave.
+
+ “Nitride = the secure messenger that proves trust and fetches secrets.”
+
+In Case A: Nitride does nothing because the key already exists.
+
+In Case B: Nitride ensures that only a verified, trusted VM receives secrets.
